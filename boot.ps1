@@ -2,7 +2,7 @@
 #
 # On a fresh machine, in PowerShell (no admin needed):
 #   irm rez.248167.xyz|iex           asks which profile to set up
-#   irm rez.248167.xyz/ai|iex        goes straight to a profile (lite, ai, full)
+#   irm rez.248167.xyz/ai|iex        goes straight to a profile (lite, ai, video, full)
 # rez.248167.xyz redirects (Cloudflare) to this file, or to <profile>.ps1 next to it, which sets $RezArgs and loads this.
 #
 # What it does:

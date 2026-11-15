@@ -4,7 +4,7 @@ Public loader for my private machine-setup tool. On a fresh Windows machine, in 
 
 ```powershell
 irm rez.248167.xyz|iex        # asks which profile
-irm rez.248167.xyz/ai|iex     # straight to a profile: lite, ai, full
+irm rez.248167.xyz/ai|iex     # straight to a profile: lite, ai, video, full
 ```
 
 rez.248167.xyz redirects here: `/` to `boot.ps1`, `/<profile>` to `<profile>.ps1`.
