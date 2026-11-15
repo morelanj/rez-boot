@@ -1,9 +1,9 @@
 # rez public loader. THIS FILE IS PUBLIC: no secrets, no private details beyond the GitHub username.
 #
 # On a fresh machine, in PowerShell (no admin needed):
-#   irm 248167.xyz|iex           asks which profile to set up
-#   irm 248167.xyz/ai|iex        goes straight to a profile (lite, ai, full)
-# 248167.xyz redirects (Cloudflare) to this file, or to <profile>.ps1 next to it, which sets $RezArgs and loads this.
+#   irm rez.248167.xyz|iex           asks which profile to set up
+#   irm rez.248167.xyz/ai|iex        goes straight to a profile (lite, ai, full)
+# rez.248167.xyz redirects (Cloudflare) to this file, or to <profile>.ps1 next to it, which sets $RezArgs and loads this.
 #
 # What it does:
 #   1. asks where to install (default %USERPROFILE%\rez)
