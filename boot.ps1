@@ -43,11 +43,34 @@
     if ($ri -ge 0 -and $ri + 1 -lt $argv.Count) { $root = "$($argv[$ri + 1])" }
     elseif ($cfg.Root) { $root = $cfg.Root }
     else {
-        $root = Join-Path $env:USERPROFILE 'rez'
-        Write-Host "Where should tools, apps and repos be installed? Free space:"
-        Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Free -gt 0 } | ForEach-Object { Write-Host ("  {0}:  {1,8:N1} GB free" -f $_.Name, ($_.Free / 1GB)) }
-        $r = Read-Host "Install folder [$root]"
-        if ($r) { $root = $r.Trim().Trim('"') }
+        # Rough sizes on a fresh machine; 'rez plan' gives exact numbers for this machine later. Keep in step with
+        # Get-Root in lib\core.ps1.
+        $sizes = [ordered]@{ lite = 1.2; ai = 15; video = 90; full = 90 }
+        Write-Host ""
+        Write-Host "rez versions (each includes the one above it; you choose after signing in to GitHub):"
+        Write-Host "  lite   ~1.2 GB   Git, GitHub CLI, Node, Python, Claude Code, MdView, Screenshot to PDF, FFmpeg"
+        Write-Host "  ai     ~15 GB    + Ollama and AI models sized to your GPU (more on big GPUs)"
+        Write-Host "  video  ~90 GB    + ComfyUI-H3 video generation (NVIDIA 8 GB+ and 32 GB RAM only)"
+        Write-Host "  full   ~90 GB    everything"
+        Write-Host "  Claude Code and Ollama's models go on C: wherever you install."
+        Write-Host ""
+        Write-Host "Free space:"
+        Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Free -gt 0 } | ForEach-Object {
+            $gb = $_.Free / 1GB
+            $fits = @($sizes.Keys | Where-Object { $sizes[$_] -lt $gb })
+            $note = if ($fits.Count) { "fits: $($fits -join ', ')" } else { 'too small' }
+            Write-Host ("  {0}:  {1,8:N1} GB free   {2}" -f $_.Name, $gb, $note)
+        }
+        $default = Join-Path $env:USERPROFILE 'rez'
+        while (-not $root) {
+            $r = Read-Host "`nInstall folder [$default] (a drive letter like D: means D:\rez)"
+            $r = "$r".Trim().Trim('"')
+            if (-not $r) { $r = $default }
+            if ($r -match '^[A-Za-z]:\\?$') { $r = $r.Substring(0, 2).ToUpper() + '\rez' }   # never the bare drive root
+            $r = [IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($r))
+            $a = Read-Host "Install into $r ? [Y/n]"
+            if ($a -notmatch '^\s*n') { $root = $r }
+        }
     }
     New-Item -ItemType Directory -Force $root, $cfgDir | Out-Null
     $cfg | Add-Member -NotePropertyName Root -NotePropertyValue $root -Force
