@@ -24,6 +24,12 @@
         $env:Path = @([Environment]::GetEnvironmentVariable('Path', 'Machine'), [Environment]::GetEnvironmentVariable('Path', 'User'), $env:Path) -join ';'
     }
     function Has([string]$name) { [bool](Get-Command $name -ErrorAction SilentlyContinue) }
+    # Scoop links folders (junctions). exFAT and FAT drives (common on external drives) can't hold them, so on
+    # those Scoop's tools go in your user folder on C: and everything else stays in the install folder.
+    function Fs([string]$path) {
+        try { "$((New-Object IO.DriveInfo ([IO.Path]::GetPathRoot($path))).DriveFormat)" } catch { '' }
+    }
+    function Links-Ok([string]$path) { $f = Fs $path; -not $f -or @('NTFS', 'ReFS') -contains $f }
 
     # Scripts (Scoop, your profile) need at least RemoteSigned; for the current user that needs no admin.
     $saved = 'Restricted'
@@ -59,6 +65,7 @@
             $gb = $_.Free / 1GB
             $fits = @($sizes.Keys | Where-Object { $sizes[$_] -lt $gb })
             $note = if ($fits.Count) { "fits: $($fits -join ', ')" } else { 'too small' }
+            if (-not (Links-Ok "$($_.Name):\")) { $note += "   ($(Fs "$($_.Name):\"): Scoop's ~1 GB of tools go on C:)" }
             Write-Host ("  {0}:  {1,8:N1} GB free   {2}" -f $_.Name, $gb, $note)
         }
         $default = Join-Path $env:USERPROFILE 'rez'
@@ -74,11 +81,30 @@
     }
     New-Item -ItemType Directory -Force $root, $cfgDir | Out-Null
     $cfg | Add-Member -NotePropertyName Root -NotePropertyValue $root -Force
+    # Where Scoop lives (rez reads ScoopDir too). Keep in step with Get-ScoopDir in lib\core.ps1.
+    if ($cfg.ScoopDir) { $scoopDir = $cfg.ScoopDir }
+    elseif (Links-Ok $root) { $scoopDir = Join-Path $root 'scoop' }
+    else {
+        $scoopDir = Join-Path $env:USERPROFILE 'scoop'
+        Write-Host "$([IO.Path]::GetPathRoot($root)) is $(Fs $root), which can't hold Scoop's folder links: Scoop's tools go in $scoopDir, everything else in $root." -ForegroundColor Yellow
+    }
+    $cfg | Add-Member -NotePropertyName ScoopDir -NotePropertyValue $scoopDir -Force
     $cfg | ConvertTo-Json -Depth 5 | Set-Content -Encoding UTF8 $cfgFile
+
+    # A Scoop already on such a drive (an earlier rez put it there) is half broken: install a fresh one on C:.
+    # The old folder is left alone; it can be deleted afterwards.
+    $old = [Environment]::GetEnvironmentVariable('SCOOP', 'User')
+    if ($old -and -not (Links-Ok $old)) {
+        Write-Host "Scoop in $old is on $(Fs $old) and can't work there; installing it in $scoopDir instead (you can delete $old afterwards)." -ForegroundColor Yellow
+        $keep = @([Environment]::GetEnvironmentVariable('Path', 'User') -split ';' | Where-Object { $_ -and $_ -notlike "$old*" }) -join ';'
+        [Environment]::SetEnvironmentVariable('Path', $keep, 'User')
+        $env:Path = @($env:Path -split ';' | Where-Object { $_ -and $_ -notlike "$old*" }) -join ';'
+        [Environment]::SetEnvironmentVariable('SCOOP', $null, 'User'); $env:SCOOP = $null
+    }
 
     if (-not (Has scoop)) {
         Write-Host "Installing Scoop..."
-        $dir = Join-Path $root 'scoop'
+        $dir = $scoopDir
         [Environment]::SetEnvironmentVariable('SCOOP', $dir, 'User'); $env:SCOOP = $dir
         $f = Join-Path $cfgDir 'install-scoop.ps1'
         Invoke-WebRequest 'https://get.scoop.sh' -OutFile $f -UseBasicParsing
@@ -88,6 +114,13 @@
     }
     if (-not (Has git)) { Write-Host "Installing Git..."; scoop install git; Refresh-Path }
     if (-not (Has gh)) { Write-Host "Installing GitHub CLI..."; scoop install gh; Refresh-Path }
+    # Stop at the first missing tool rather than piling up errors.
+    foreach ($t in @(@('scoop', 'Scoop'), @('git', 'Git'), @('gh', 'GitHub CLI'))) {
+        if (-not (Has $t[0])) {
+            Write-Host "$($t[1]) didn't install (see the errors above), so setup stopped. Send the errors to whoever looks after rez." -ForegroundColor Red
+            return
+        }
+    }
 
     cmd /c "gh auth status -h github.com >nul 2>&1"
     if ($LASTEXITCODE -ne 0) {
