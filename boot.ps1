@@ -51,10 +51,10 @@
     else {
         # Rough sizes on a fresh machine; 'rez plan' gives exact numbers for this machine later. Keep in step with
         # Get-Root in lib\core.ps1.
-        $sizes = [ordered]@{ lite = 1.2; ai = 15; video = 90; full = 90 }
+        $sizes = [ordered]@{ lite = 1.5; ai = 15; video = 90; full = 90 }
         Write-Host ""
         Write-Host "rez versions (each includes the one above it; you choose after signing in to GitHub):"
-        Write-Host "  lite   ~1.2 GB   Git, GitHub CLI, Node, Python, Claude Code, MdView, Screenshot to PDF, FFmpeg"
+        Write-Host "  lite   ~1.5 GB   Git, GitHub CLI, Node, Python, Claude Code, MdView, Screenshot to PDF, PPTX Slimmer, FFmpeg"
         Write-Host "  ai     ~15 GB    + Ollama and AI models sized to your GPU (more on big GPUs)"
         Write-Host "  video  ~90 GB    + ComfyUI-H3 video generation (NVIDIA 8 GB+ and 32 GB RAM only)"
         Write-Host "  full   ~90 GB    everything"
